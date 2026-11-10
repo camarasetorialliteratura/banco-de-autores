@@ -51,7 +51,7 @@
       <p class="dica" style="margin-top:-6px">Marque tudo o que se aplica.</p>
       <div class="opcoes" id="talentos"></div>
       <div id="blocoOutro" class="oculto">
-        <label for="outro_texto">Outro talento <span class="dica">(descreva)</span></label>
+        <label for="outro_texto">Temas de oficinas que você pode ministrar </label>
         <input type="text" id="outro_texto" maxlength="150">
       </div>
 
@@ -149,7 +149,7 @@
     $("classificacao").appendChild(o);
   });
   function atualizarOutro() {
-    const marcado = document.querySelector('input[name=talento][value="Outro"]').checked;
+    const marcado = document.querySelector('input[name=talento][value="Oficinas"]').checked;
     $("blocoOutro").classList.toggle("oculto", !marcado);
   }
   $("talentos").addEventListener("change", atualizarOutro);
@@ -226,7 +226,7 @@
       curriculo: $("curriculo").value.trim() || null,
       cursos: $("cursos").value.trim() || null,
       outros_talentos: talentos,
-      outro_talento: talentos.includes("Outro") ? ($("outro_texto").value.trim() || null) : null,
+      outro_talento: talentos.includes("Oficinas") ? ($("outro_texto").value.trim() || null) : null,
       portfolio_url: portfolio || null,
       aceite_publicacao: $("aceite").checked,
       atualizado_em: new Date().toISOString(),
