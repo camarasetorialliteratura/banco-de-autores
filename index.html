@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Autores de Jundiaí</title>
+  <meta name="description" content="Banco de talentos dos autores de Jundiaí: currículos, livros publicados e outros talentos.">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topo">
+    <h1>Autores de Jundiaí</h1>
+    <p class="sub">Banco de talentos da literatura local: currículos, livros publicados e outras habilidades para eventos e programações.</p>
+    <nav class="nav">
+      <a href="autor.html">Sou autor(a): cadastrar ou atualizar meu perfil</a>
+    </nav>
+  </header>
+
+  <div class="filtros">
+    <div>
+      <label for="busca">Buscar</label>
+      <input type="text" id="busca" placeholder="Nome, livro, gênero, palavra do currículo...">
+    </div>
+    <div>
+      <label for="filtroTalento">Outros talentos</label>
+      <select id="filtroTalento"><option value="">Todos</option></select>
+    </div>
+  </div>
+
+  <p class="sub" id="contagem" aria-live="polite"></p>
+  <div id="aviso" class="msg oculto"></div>
+  <main id="lista"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+  let AUTORES = [];
+  const lista = document.getElementById("lista");
+  const aviso = document.getElementById("aviso");
+  const contagem = document.getElementById("contagem");
+  const busca = document.getElementById("busca");
+  const filtro = document.getElementById("filtroTalento");
+
+  TALENTOS.forEach((t) => {
+    const o = document.createElement("option");
+    o.value = t; o.textContent = t;
+    filtro.appendChild(o);
+  });
+
+  function mostrarAviso(texto) {
+    aviso.textContent = texto;
+    aviso.className = "msg erro";
+  }
+
+  function normalizar(s) {
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+
+  function textoBusca(a) {
+    const livros = (a.titulos || []).map((t) => [t.titulo, t.editora, t.genero, t.sinopse].join(" ")).join(" ");
+    return normalizar([a.nome_completo, a.nome_artistico, a.curriculo, a.cursos, a.outro_talento, livros].join(" "));
+  }
+
+  function cartaoAutor(a) {
+    const nomePrincipal = a.nome_artistico || a.nome_completo;
+    const real = a.nome_artistico ? `<p class="real">${esc(a.nome_completo)}</p>` : "";
+    const chips = (a.outros_talentos || [])
+      .map((t) => `<span class="chip">${esc(t === "Outro" && a.outro_talento ? "Outro: " + a.outro_talento : t)}</span>`)
+      .join("");
+    const portfolio = linkSeguro(a.portfolio_url);
+    const livros = (a.titulos || []).slice().sort((x, y) => (y.ano || 0) - (x.ano || 0));
+
+    const livrosHtml = livros.length
+      ? `<details><summary>Livros publicados (${livros.length})</summary>${livros
+          .map((t) => {
+            const meta = [t.editora, t.ano, t.paginas ? t.paginas + " páginas" : "", t.genero, t.classificacao ? "Classificação: " + t.classificacao : ""]
+              .filter(Boolean).map(esc).join(" · ");
+            return `<div class="livro"><strong>${esc(t.titulo)}</strong><p class="meta">${meta}</p>${t.sinopse ? `<p>${esc(t.sinopse)}</p>` : ""}</div>`;
+          }).join("")}</details>`
+      : "";
+
+    return `<article class="card">
+      <h3>${esc(nomePrincipal)}</h3>
+      ${real}
+      ${a.curriculo ? `<p>${esc(a.curriculo)}</p>` : ""}
+      ${a.cursos ? `<p><strong>Cursos e oficinas:</strong> ${esc(a.cursos)}</p>` : ""}
+      ${chips ? `<div class="chips" aria-label="Outros talentos">${chips}</div>` : ""}
+      ${portfolio ? `<p><a href="${esc(portfolio)}" target="_blank" rel="noopener noreferrer">Ver portfólio</a></p>` : ""}
+      ${livrosHtml}
+    </article>`;
+  }
+
+  function desenhar() {
+    const termo = normalizar(busca.value.trim());
+    const tal = filtro.value;
+    const filtrados = AUTORES.filter((a) => {
+      if (tal && !(a.outros_talentos || []).includes(tal)) return false;
+      if (termo && !textoBusca(a).includes(termo)) return false;
+      return true;
+    });
+    contagem.textContent = filtrados.length === 1 ? "1 autor(a) encontrado(a)" : `${filtrados.length} autores encontrados`;
+    lista.innerHTML = filtrados.length
+      ? filtrados.map(cartaoAutor).join("")
+      : `<p class="vazio">Nenhum autor encontrado com esses filtros.</p>`;
+  }
+
+  async function carregar() {
+    if (configuracaoPendente()) {
+      mostrarAviso("O site ainda não foi conectado ao banco de dados (falta preencher o arquivo config.js).");
+      return;
+    }
+    const { data, error } = await db.from("autores").select("*, titulos(*)").order("nome_completo");
+    if (error) {
+      mostrarAviso("Não foi possível carregar os autores agora. Tente novamente em instantes.");
+      return;
+    }
+    // Só mostra perfis marcados como públicos (o próprio autor, logado, veria o seu mesmo privado).
+    AUTORES = (data || []).filter((a) => a.aceite_publicacao);
+    desenhar();
+  }
+
+  busca.addEventListener("input", desenhar);
+  filtro.addEventListener("change", desenhar);
+  carregar();
+</script>
+</body>
+</html>

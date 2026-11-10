@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meu cadastro – Autores de Jundiaí</title>
+  <meta name="robots" content="noindex">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="topo">
+    <h1>Cadastro de autores de Jundiaí</h1>
+    <p class="sub">Preencha seu perfil, cadastre seus livros e volte quando quiser para atualizar.</p>
+    <nav class="nav"><a href="index.html">Ver o banco de autores</a></nav>
+  </header>
+
+  <div id="mensagem" class="msg oculto" role="status" aria-live="polite"></div>
+
+  <!-- ENTRAR -->
+  <section id="blocoLogin" class="card oculto">
+    <h2 style="margin-top:0">Entrar</h2>
+    <p>Digite seu e-mail. Você vai receber um link: é só clicar nele para entrar. Não precisa criar senha. Na primeira vez, o link cria seu cadastro; nas próximas, ele leva você de volta ao seu perfil.</p>
+    <form id="formLogin">
+      <label for="email">Seu e-mail</label>
+      <input type="email" id="email" required autocomplete="email">
+      <div class="acoes"><button type="submit" id="btnLogin">Enviar link de acesso</button></div>
+    </form>
+  </section>
+
+  <!-- ÁREA DO AUTOR -->
+  <div id="blocoAutor" class="oculto">
+    <p class="sub">Você está logado(a) como <strong id="emailLogado"></strong>. <button type="button" class="sec mini" id="btnSair">Sair</button></p>
+
+    <form id="formPerfil" class="card">
+      <h2 style="margin-top:0">Autor(a)</h2>
+
+      <label for="nome_completo">Nome completo</label>
+      <input type="text" id="nome_completo" required maxlength="150">
+
+      <label for="nome_artistico">Nome artístico <span class="dica">(se houver)</span></label>
+      <input type="text" id="nome_artistico" maxlength="150">
+
+      <label for="curriculo">Currículo do autor</label>
+      <textarea id="curriculo" maxlength="4000"></textarea>
+
+      <label for="cursos">Cursos e oficinas na área</label>
+      <textarea id="cursos" maxlength="3000"></textarea>
+
+      <h2>Outros talentos</h2>
+      <p class="dica" style="margin-top:-6px">Marque tudo o que se aplica.</p>
+      <div class="opcoes" id="talentos"></div>
+      <div id="blocoOutro" class="oculto">
+        <label for="outro_texto">Outro talento <span class="dica">(descreva)</span></label>
+        <input type="text" id="outro_texto" maxlength="150">
+      </div>
+
+      <h2>Portfólio</h2>
+      <label for="portfolio_url">Link do seu portfólio no Google Docs <span class="dica">(deixe o compartilhamento como "qualquer pessoa com o link pode ver")</span></label>
+      <input type="url" id="portfolio_url" placeholder="https://docs.google.com/...">
+
+      <h2>Publicação</h2>
+      <label class="check">
+        <input type="checkbox" id="aceite">
+        <span>Autorizo a publicação dos dados deste cadastro (nome, currículo, livros, talentos e link do portfólio) no banco de autores público. Meu e-mail <strong>não</strong> é exibido. Posso editar ou apagar meu cadastro quando quiser. Sem marcar esta caixa, seu perfil fica salvo mas <strong>não aparece</strong> para o público.</span>
+      </label>
+
+      <div class="acoes">
+        <button type="submit" id="btnSalvarPerfil">Salvar meu perfil</button>
+        <button type="button" class="perigo" id="btnApagar">Apagar meu cadastro</button>
+      </div>
+    </form>
+
+    <section id="blocoTitulos" class="card">
+      <h2 style="margin-top:0">Títulos publicados</h2>
+      <p id="avisoTitulos" class="dica oculto">Salve seu perfil acima antes de cadastrar livros.</p>
+      <div id="listaTitulos"></div>
+
+      <form id="formTitulo">
+        <h3 id="tituloFormulario" style="margin:20px 0 0">Adicionar um livro</h3>
+        <input type="hidden" id="titulo_id">
+
+        <label for="titulo">Título</label>
+        <input type="text" id="titulo" required maxlength="200">
+
+        <div class="linha">
+          <div>
+            <label for="editora">Editora <span class="dica">(se houver)</span></label>
+            <input type="text" id="editora" maxlength="150">
+          </div>
+          <div>
+            <label for="genero">Gênero</label>
+            <input type="text" id="genero" maxlength="100" placeholder="Poesia, romance, infantil...">
+          </div>
+        </div>
+
+        <div class="linha">
+          <div>
+            <label for="ano">Ano de lançamento</label>
+            <input type="number" id="ano" min="1400" max="2100">
+          </div>
+          <div>
+            <label for="paginas">Número de páginas</label>
+            <input type="number" id="paginas" min="1" max="10000">
+          </div>
+        </div>
+
+        <label for="classificacao">Classificação etária indicativa</label>
+        <select id="classificacao"><option value="">Selecione</option></select>
+
+        <label for="sinopse">Sinopse</label>
+        <textarea id="sinopse" maxlength="3000"></textarea>
+
+        <div class="acoes">
+          <button type="submit" id="btnSalvarTitulo">Salvar livro</button>
+          <button type="button" class="sec oculto" id="btnCancelarEdicao">Cancelar edição</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let usuario = null;
+  let perfilExiste = false;
+  let titulos = [];
+
+  function mensagem(texto, tipo) {
+    const m = $("mensagem");
+    m.textContent = texto;
+    m.className = "msg " + (tipo || "");
+    if (!texto) m.className = "msg oculto";
+    if (texto) window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---------- montar listas fixas ----------
+  TALENTOS.forEach((t, i) => {
+    const l = document.createElement("label");
+    l.innerHTML = `<input type="checkbox" name="talento" value="${esc(t)}"><span>${esc(t)}</span>`;
+    $("talentos").appendChild(l);
+  });
+  CLASSIFICACOES.forEach((c) => {
+    const o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    $("classificacao").appendChild(o);
+  });
+  function atualizarOutro() {
+    const marcado = document.querySelector('input[name=talento][value="Outro"]').checked;
+    $("blocoOutro").classList.toggle("oculto", !marcado);
+  }
+  $("talentos").addEventListener("change", atualizarOutro);
+
+  // ---------- login ----------
+  $("formLogin").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = $("btnLogin");
+    btn.disabled = true;
+    const { error } = await db.auth.signInWithOtp({
+      email: $("email").value.trim(),
+      options: { emailRedirectTo: location.origin + location.pathname },
+    });
+    btn.disabled = false;
+    if (error) {
+      mensagem("Não foi possível enviar o link agora. Confira o e-mail e tente de novo em alguns minutos.", "erro");
+    } else {
+      mensagem("Pronto! Enviamos um link para o seu e-mail. Abra a mensagem e clique no link (olhe também a caixa de spam).", "ok");
+    }
+  });
+
+  $("btnSair").addEventListener("click", async () => {
+    await db.auth.signOut();
+  });
+
+  // ---------- estado de sessão ----------
+  function aplicarSessao(sessao) {
+    const novoId = sessao ? sessao.user.id : null;
+    const antigoId = usuario ? usuario.id : null;
+    usuario = sessao ? sessao.user : null;
+    $("blocoLogin").classList.toggle("oculto", !!usuario);
+    $("blocoAutor").classList.toggle("oculto", !usuario);
+    if (usuario) {
+      $("emailLogado").textContent = usuario.email;
+      if (novoId !== antigoId) carregarTudo();
+    } else {
+      perfilExiste = false; titulos = [];
+    }
+  }
+
+  // ---------- perfil ----------
+  async function carregarTudo() {
+    const { data, error } = await db.from("autores").select("*").eq("id", usuario.id).maybeSingle();
+    if (error) { mensagem("Não foi possível carregar seu cadastro. Tente recarregar a página.", "erro"); return; }
+    perfilExiste = !!data;
+    if (data) {
+      $("nome_completo").value = data.nome_completo || "";
+      $("nome_artistico").value = data.nome_artistico || "";
+      $("curriculo").value = data.curriculo || "";
+      $("cursos").value = data.cursos || "";
+      $("portfolio_url").value = data.portfolio_url || "";
+      $("aceite").checked = !!data.aceite_publicacao;
+      document.querySelectorAll("input[name=talento]").forEach((i) => {
+        i.checked = (data.outros_talentos || []).includes(i.value);
+      });
+      $("outro_texto").value = data.outro_talento || "";
+    }
+    atualizarOutro();
+    await carregarTitulos();
+  }
+
+  $("formPerfil").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const portfolio = $("portfolio_url").value.trim();
+    if (portfolio && !linkSeguro(portfolio)) {
+      mensagem("O link do portfólio precisa começar com https://", "erro");
+      return;
+    }
+    const talentos = [...document.querySelectorAll("input[name=talento]:checked")].map((i) => i.value);
+    const registro = {
+      id: usuario.id,
+      nome_completo: $("nome_completo").value.trim(),
+      nome_artistico: $("nome_artistico").value.trim() || null,
+      curriculo: $("curriculo").value.trim() || null,
+      cursos: $("cursos").value.trim() || null,
+      outros_talentos: talentos,
+      outro_talento: talentos.includes("Outro") ? ($("outro_texto").value.trim() || null) : null,
+      portfolio_url: portfolio || null,
+      aceite_publicacao: $("aceite").checked,
+      atualizado_em: new Date().toISOString(),
+    };
+    $("btnSalvarPerfil").disabled = true;
+    const { error } = await db.from("autores").upsert(registro);
+    $("btnSalvarPerfil").disabled = false;
+    if (error) { mensagem("Não foi possível salvar. Tente de novo.", "erro"); return; }
+    perfilExiste = true;
+    atualizarAvisoTitulos();
+    mensagem(registro.aceite_publicacao
+      ? "Perfil salvo! Ele já aparece no banco de autores."
+      : "Perfil salvo, mas ele ainda NÃO aparece para o público. Marque a caixa de autorização para publicá-lo.", "ok");
+  });
+
+  $("btnApagar").addEventListener("click", async () => {
+    if (!perfilExiste) { mensagem("Você ainda não tem cadastro salvo.", "erro"); return; }
+    if (!confirm("Tem certeza? Isso apaga seu perfil e todos os seus livros cadastrados. Não dá para desfazer.")) return;
+    const { error } = await db.from("autores").delete().eq("id", usuario.id);
+    if (error) { mensagem("Não foi possível apagar agora. Tente de novo.", "erro"); return; }
+    $("formPerfil").reset(); limparFormTitulo(); atualizarOutro();
+    perfilExiste = false; titulos = []; desenharTitulos(); atualizarAvisoTitulos();
+    mensagem("Seu cadastro foi apagado.", "ok");
+  });
+
+  // ---------- títulos ----------
+  function atualizarAvisoTitulos() {
+    $("avisoTitulos").classList.toggle("oculto", perfilExiste);
+    $("btnSalvarTitulo").disabled = !perfilExiste;
+  }
+
+  async function carregarTitulos() {
+    atualizarAvisoTitulos();
+    if (!perfilExiste) { titulos = []; desenharTitulos(); return; }
+    const { data, error } = await db.from("titulos").select("*").eq("autor_id", usuario.id).order("ano", { ascending: false });
+    if (error) { mensagem("Não foi possível carregar seus livros.", "erro"); return; }
+    titulos = data || [];
+    desenharTitulos();
+  }
+
+  function desenharTitulos() {
+    const el = $("listaTitulos");
+    if (!titulos.length) { el.innerHTML = `<p class="dica">Nenhum livro cadastrado ainda.</p>`; return; }
+    el.innerHTML = titulos.map((t) => {
+      const meta = [t.editora, t.ano, t.paginas ? t.paginas + " páginas" : "", t.genero, t.classificacao].filter(Boolean).map(esc).join(" · ");
+      return `<div class="livro" style="margin-bottom:14px">
+        <strong>${esc(t.titulo)}</strong>
+        <p class="meta">${meta}</p>
+        <div class="acoes" style="margin-top:6px">
+          <button type="button" class="sec mini" data-editar="${esc(t.id)}">Editar</button>
+          <button type="button" class="perigo mini" data-apagar="${esc(t.id)}">Apagar</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function limparFormTitulo() {
+    $("formTitulo").reset();
+    $("titulo_id").value = "";
+    $("tituloFormulario").textContent = "Adicionar um livro";
+    $("btnCancelarEdicao").classList.add("oculto");
+  }
+
+  $("btnCancelarEdicao").addEventListener("click", limparFormTitulo);
+
+  $("listaTitulos").addEventListener("click", async (e) => {
+    const editar = e.target.closest("[data-editar]");
+    const apagar = e.target.closest("[data-apagar]");
+    if (editar) {
+      const t = titulos.find((x) => x.id === editar.dataset.editar);
+      if (!t) return;
+      $("titulo_id").value = t.id;
+      $("titulo").value = t.titulo || "";
+      $("editora").value = t.editora || "";
+      $("genero").value = t.genero || "";
+      $("ano").value = t.ano || "";
+      $("paginas").value = t.paginas || "";
+      $("classificacao").value = t.classificacao || "";
+      $("sinopse").value = t.sinopse || "";
+      $("tituloFormulario").textContent = "Editando: " + t.titulo;
+      $("btnCancelarEdicao").classList.remove("oculto");
+      $("formTitulo").scrollIntoView({ behavior: "smooth" });
+    }
+    if (apagar) {
+      if (!confirm("Apagar este livro do seu cadastro?")) return;
+      const { error } = await db.from("titulos").delete().eq("id", apagar.dataset.apagar).eq("autor_id", usuario.id);
+      if (error) { mensagem("Não foi possível apagar o livro.", "erro"); return; }
+      await carregarTitulos();
+      mensagem("Livro apagado.", "ok");
+    }
+  });
+
+  $("formTitulo").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!perfilExiste) { mensagem("Salve seu perfil antes de cadastrar livros.", "erro"); return; }
+    const ano = $("ano").value ? parseInt($("ano").value, 10) : null;
+    const paginas = $("paginas").value ? parseInt($("paginas").value, 10) : null;
+    const anoMax = new Date().getFullYear() + 1;
+    if (ano !== null && (ano < 1400 || ano > anoMax)) { mensagem("Confira o ano de lançamento.", "erro"); return; }
+    if (paginas !== null && paginas < 1) { mensagem("Confira o número de páginas.", "erro"); return; }
+    const registro = {
+      autor_id: usuario.id,
+      titulo: $("titulo").value.trim(),
+      editora: $("editora").value.trim() || null,
+      genero: $("genero").value.trim() || null,
+      ano, paginas,
+      classificacao: $("classificacao").value || null,
+      sinopse: $("sinopse").value.trim() || null,
+    };
+    const id = $("titulo_id").value;
+    $("btnSalvarTitulo").disabled = true;
+    const { error } = id
+      ? await db.from("titulos").update(registro).eq("id", id).eq("autor_id", usuario.id)
+      : await db.from("titulos").insert(registro);
+    $("btnSalvarTitulo").disabled = false;
+    if (error) { mensagem("Não foi possível salvar o livro. Tente de novo.", "erro"); return; }
+    limparFormTitulo();
+    await carregarTitulos();
+    mensagem("Livro salvo!", "ok");
+  });
+
+  // ---------- início ----------
+  (async function iniciar() {
+    if (configuracaoPendente()) {
+      mensagem("O site ainda não foi conectado ao banco de dados (falta preencher o arquivo config.js).", "erro");
+      return;
+    }
+    const { data } = await db.auth.getSession();
+    aplicarSessao(data.session);
+    db.auth.onAuthStateChange((_evento, sessao) => aplicarSessao(sessao));
+  })();
+</script>
+</body>
+</html>
