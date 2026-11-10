@@ -68,7 +68,7 @@
     const nomePrincipal = a.nome_artistico || a.nome_completo;
     const real = a.nome_artistico ? `<p class="real">${esc(a.nome_completo)}</p>` : "";
     const chips = (a.outros_talentos || [])
-      .map((t) => `<span class="chip">${esc(t === "Outro" && a.outro_talento ? "Outro: " + a.outro_talento : t)}</span>`)
+      .map((t) => `<span class="chip">${esc(t === "Oficinas" && a.outro_talento ? "Oficinas: " + a.outro_talento : t)}</span>`)
       .join("");
     const portfolio = linkSeguro(a.portfolio_url);
     const livros = (a.titulos || []).slice().sort((x, y) => (y.ano || 0) - (x.ano || 0));
