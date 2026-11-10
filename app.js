@@ -11,7 +11,7 @@ const TALENTOS = [
   "Mediação de bate-papo",
   "Mestre de cerimônias",
   "Dança",
-  "Outro",
+  "Oficinas",
 ];
 
 const CLASSIFICACOES = [
